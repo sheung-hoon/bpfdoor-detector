@@ -1,0 +1,165 @@
+# BPFDoor Quick‑Check v2 (English)
+
+`bpfdoor_quickcheck_v2.sh` is an advanced shell script capable of detecting BPFDoor and its variants (e.g., dbus-srv, inode262394, rad, etc.).
+It performs comprehensive checks including process masquerading, memory patterns, BPF code signatures, kernel modules, network, and filesystem.
+
+---
+
+## 📂 Files
+| File | Description |
+|------|-------------|
+| `bpfdoor_quickcheck_v2.sh` | BPFDoor/variant comprehensive detection script **← Main executable** |
+| `README.md` | This document |
+
+---
+
+## ✨ Key Features
+* **Accurate Detection**: Multi-angle checks for masqueraded processes, memory mapping, BPF signatures, kernel modules, network, filesystem
+* **Variant Coverage**: Latest IoC and variant patterns from KISA/SKT
+* **Structured/Extensible**: Function-based, easy to expand patterns/process names/signatures
+* **Logging**: Detailed logs in `/var/log` or `/tmp` (auto-backup)
+* **Resource Optimization**: Selective checks, fast execution, minimal impact on operations
+
+---
+
+## 🔧 Prerequisites
+| Required | Purpose |
+|----------|---------|
+| bash 4.x+, ps, grep, readlink, sed, awk | Basic shell utilities |
+| root privileges (recommended) | Full access to /proc, network, filesystem |
+
+| Optional | Usage |
+|----------|-------|
+| hexdump | BPF code signature detection |
+| strings | Memory string pattern detection |
+
+---
+
+## 🚀 How to Use
+```bash
+# 1) Grant execute permission
+chmod +x bpfdoor_quickcheck_v2.sh
+
+# 2) Run as root (log file recommended)
+sudo ./bpfdoor_quickcheck_v2.sh
+
+# 3) Check the log
+cat /var/log/bpfdoor_scan_$(date +%F).log
+```
+
+---
+
+## 📝 Interpreting Results
+
+- **Suspect cases: 0**  
+  → No signs of BPFDoor/variant infection detected
+
+- **Suspect cases: 1 or more**  
+  → Infection suspected!  
+    - Check the log file for PID, process name, memory pattern, network, file, and details
+    - Immediately isolate from the network, collect memory dump, report to KISA (118), etc.
+
+- **Access failure**  
+  → Some checks missed due to lack of root privileges or process termination (warning only)
+
+---
+
+## 🛠️ Other Notes
+
+- **Regular checks recommended**: Use crontab, systemd, etc. for periodic execution
+- **Patterns/process names/signatures**: Easily add/modify at the top of the script
+- **If issues occur**: Refer to the log file and error messages
+
+---
+
+## ⚠️ Windows Editing Issues & Solutions
+
+If you edit this script on Windows, it may introduce Windows-style line endings (CRLF, 0d 0a), which will cause errors when running on Linux/Unix (e.g., "/bin/bash^M: bad interpreter").
+
+**How to fix:**
+- Use the `dos2unix` utility to convert the script before running on Linux/Unix:
+  ```bash
+  sudo apt-get install dos2unix
+  dos2unix bpfdoor_quickcheck_v2.sh
+  ```
+- The script includes an automatic check and will attempt to convert itself if CRLF is detected. If `dos2unix` is not installed, it will prompt you to install and run it manually.
+
+---
+
+## 🔍 Code & Document Reflection Checklist
+
+Below is a summary of how the main detection requirements from documentation and images are reflected in the code:
+
+### 1) Detection of 10 Masqueraded Process Names
+**Docs:**
+- 10 process names (udevd, mingetty, console-kit-daemon, hald-addon-acpi, dbus-daemon, hald-runner, pickup, avahi-daemon: chroot helper, auditd, systemd-journald)
+- Detect via `ps -ef | grep <name>`
+- Random masquerading
+**Code:**
+- All 10 names included in the `NAMES` array
+- Scans all processes for name matches
+- If matched, performs detailed checks (path, memory, signature, etc.)
+**→ Fully implemented**
+
+### 2) Memory Mapping Traces (e.g., /dev/shm/kdmtmpflush)
+**Docs:**
+- Detect traces like `/dev/shm/kdmtmpflush` in `/proc/<pid>/maps` of suspicious processes
+- Check with `grep kdmtmpflush`
+**Code:**
+- `PATTERNS` variable includes `/dev/shm/kdmtmpflush`
+- Scans maps files for the pattern using regex
+**→ Fully implemented**
+
+### 3) Variant Malware (8 types), Filenames, Hashes, Functions
+**Docs:**
+- smartadm, dbus-srv, inode262394, rad, hald-addon-volume, hpasmmld, gm, File_in_Inode_#1900667, etc.
+- Filenames, hashes, function descriptions
+**Code:**
+- All names included in `PATTERNS`
+- Detects these in filesystem, memory, maps, etc.
+- No direct hash comparison, but pattern/filename-based detection achieves the practical goal
+**→ Effectively implemented (hash comparison not included, but pattern-based is more practical)**
+
+### 4) BPF Filter Signature (Code/Image)
+**Docs/Images:**
+- bpf_code array, filter.len, hex signatures (see signature.png)
+- Detect if BPF filter code is present in memory/files
+**Code:**
+- `BPF_SIGNATURES` array includes multiple hex signatures
+- Uses hexdump to detect signatures in memory/files
+- Also detects BPF-related string patterns
+**→ Fully implemented**
+
+### 5) Network-Related
+**Docs:**
+- Malicious IP (165.232.174.130)
+- Port 4444, RAW socket, etc.
+**Code:**
+- `SUSPICIOUS_IPS` includes 165.232.174.130
+- Uses `ss` to detect the IP, port 4444, RAW sockets, etc.
+**→ Fully implemented**
+
+### 6) Privilege/Access Failure, sudo Guidance
+**Docs/Images:**
+- If access to maps, mem, etc. fails, sudo is needed
+- Warn on insufficient privileges
+**Code:**
+- Warns if not run as root
+- Warns and counts access failures to maps, mem
+**→ Fully implemented**
+
+### 7) Windows CRLF (0d 0a) Line Ending Issue
+**Docs/Images:**
+- If CRLF present, convert with dos2unix
+- Provide conversion command
+**Code:**
+- `check_crlf` function auto-detects and attempts dos2unix conversion
+- Prompts for manual install if dos2unix is missing
+**→ Fully implemented**
+
+---
+
+**For questions or feedback:**
+Contact your security team or the responsible developer.
+📧 sh.lee@eastsunsecurity.com
+
